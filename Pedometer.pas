@@ -3,7 +3,12 @@ unit Pedometer;
   interface
 
     uses
-      System.SysUtils, System.Classes,  System.Sensors, System.Sensors.Components, FMX.Types, FireDAC.Comp.Client;
+      System.SysUtils,
+      System.Classes,
+      System.Sensors,
+      System.Sensors.Components,
+      FMX.Types,
+      FireDAC.Comp.Client;
 
     type
       TPedometer = class(TComponent)
@@ -18,9 +23,8 @@ unit Pedometer;
           FIsPaused : Boolean;
           FIsStarted : Boolean;
           FSensor : TMotionSensor;
-          FTimer : TTimer;  // really useful?  ->  clarify its use in this component...
-          FListPoints : TFDMemTable; // for recording measures
-          FSensitivity : NativeUInt;
+          FTimer : TTimer;  // Is it really useful as FListPoints could store each point timestamp?
+          FListPoints : TFDMemTable;
           // ??? missing field to record results when stopping pedometer ???
         protected
           procedure SetStopDetectionTimeout(const aDuration : Single); virtual;
@@ -30,6 +34,8 @@ unit Pedometer;
           procedure SetSimpleSteps(const aQuantity : NativeUInt); virtual;
           procedure SetStrideLengthComputed(const aLength : Single); virtual;
           procedure SetWalkSteps(const aQuantity : NativeUInt); virtual;
+          procedure SetSensitivity(const aValue : Double); virtual;
+          function GetSensitivity : Double; virtual;
           procedure SetIsPaused(const aStatus : Boolean); virtual;
           procedure SetIsStarted(const aStatus : Boolean); virtual;
           procedure ResetToDefaultValues; virtual;
@@ -52,7 +58,7 @@ unit Pedometer;
         published
           property StopDetectionTimeout : Single read FStopDetectionTimeout write SetStopDetectionTimeout;
           property StrideLenghtUserDefined : Single read FStrideLenghtUserDefined write SetStrideLenghtUserDefined;
-          property Sensitivity : NativeUInt read FSensitivity write FSensitivity;
+          property Sensitivity : Double read GetSensitivity write SetSensitivity;
       end;
 
     procedure Register;
@@ -81,7 +87,7 @@ unit Pedometer;
                   try
                     FListPoints := TFDMemTable.Create(Self);
                     try
-                       // initialize MemTable with fields: 1 field for each property of sensor available (depends on hardware and plateform)
+                       // initialize MemTable with fields: 1 field for each property of sensor available (depends on hardware and plateform) + timestamp
                        ResetToDefaultValues;
                     except
                       FListPoints.Free;
@@ -107,22 +113,34 @@ unit Pedometer;
         inherited;
       end;
 
+    function TPedometer.GetSensitivity: Double;
+      begin
+        Result := 0.0;
+        if Assigned(FSensor) then
+          Result := FSensor.UpdateInterval;
+      end;
+
     procedure TPedometer.Pause;
       begin
         if Assigned(FSensor) then
           begin
-            if FIsStarted then
+            if IsStarted then
               begin
-                {
-                if FIsPaused = False
-                   stop recording FSensor.OnDataChange events
-                   pause FTimer
-                   SetFIsPaused(True)
-                 else
-                   start recording FSensor.OnDataChange events
-                   restart FTimer
-                   SetFIsPaused(False)
-                }
+                if IsPaused then
+                  begin
+                    {
+                    stop recording FSensor.OnDataChange events
+                    pause FTimer
+                    }
+                  end
+                else
+                  begin
+                    {
+                    start recording FSensor.OnDataChange events
+                    restart FTimer
+                    }
+                  end;
+                IsPaused := not IsPaused;
               end;
           end;
       end;
@@ -142,10 +160,10 @@ unit Pedometer;
       begin
         if Assigned(FListPoints) then
           FListPoints.EmptyDataSet;
-        SetStopDetectionTimeout(10000.0);
+        StopDetectionTimeout := 10000.0;
         SetStrideLengthComputed(0.73);
-        SetStrideLenghtUserDefined(0.73);
-        FSensitivity := 50000;
+        StrideLenghtUserDefined := 0.73;
+        Sensitivity := 50000;
       end;
 
     procedure TPedometer.Save;
@@ -183,6 +201,12 @@ unit Pedometer;
         FIsStarted := aStatus;
       end;
 
+    procedure TPedometer.SetSensitivity(const aValue: Double);
+      begin
+        if Assigned(FSensor) then
+          FSensor.UpdateInterval := aValue;
+      end;
+
     procedure TPedometer.SetSimpleSteps(const aQuantity: NativeUInt);
       begin
         FSimpleSteps := aQuantity;
@@ -216,19 +240,23 @@ unit Pedometer;
 
     procedure TPedometer.Start;
       begin
-        // If motion sensor is available, start it, else raise exception?
-        SetIsStarted(True);
+        if Assigned(FSensor) then
+          IsStarted := True;
+        {
+        - start timer
+        - start recording FSensor.OnDataChange events
+        }
       end;
 
     procedure TPedometer.Stop;
       begin
         if Assigned(FSensor) then
           begin
-            if FIsStarted then
+            if IsStarted then
               begin
                 // stop recording FSensor.OnDataChange events
                 Save;
-                SetIsStarted(False);
+                IsStarted := False;
                 Reset;
               end;
           end;
