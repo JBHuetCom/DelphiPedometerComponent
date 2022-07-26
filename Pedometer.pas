@@ -3,12 +3,7 @@ unit Pedometer;
   interface
 
     uses
-      System.SysUtils, System.Classes, System.Sensors.Components, FMX.Types, FireDAC.Comp.Client;
-
-    const
-      DefaultStrideLength : Single = 0.73;
-      DefaultDetectionTimeout : Single = 10000.0;
-      DefaultSensitivity : NativeUInt = 50000;
+      System.SysUtils, System.Classes,  System.Sensors, System.Sensors.Components, FMX.Types, FireDAC.Comp.Client;
 
     type
       TPedometer = class(TComponent)
@@ -28,15 +23,15 @@ unit Pedometer;
           FSensitivity : NativeUInt;
           // ??? missing field to record results when stopping pedometer ???
         protected
-          procedure SetStopDetectionTimeout(aDuration : Single); virtual;
-          procedure SetStrideLenghtUserDefined(aLength : Single); virtual;
-          procedure SetDistance(aLength : Single); virtual;
-          procedure SetElapsedTime(aDuration : NativeUInt); virtual;
-          procedure SetSimpleSteps(aQuantity : NativeUInt); virtual;
-          procedure SetStrideLengthComputed(aLength : Single); virtual;
-          procedure SetWalkSteps(aQuantity : NativeUInt); virtual;
-          procedure SetIsPaused(aStatus : Boolean); virtual;
-          procedure SetIsStarted(aStatus : Boolean); virtual;
+          procedure SetStopDetectionTimeout(const aDuration : Single); virtual;
+          procedure SetStrideLenghtUserDefined(const aLength : Single); virtual;
+          procedure SetDistance(const aLength : Single); virtual;
+          procedure SetElapsedTime(const aDuration : NativeUInt); virtual;
+          procedure SetSimpleSteps(const aQuantity : NativeUInt); virtual;
+          procedure SetStrideLengthComputed(const aLength : Single); virtual;
+          procedure SetWalkSteps(const aQuantity : NativeUInt); virtual;
+          procedure SetIsPaused(const aStatus : Boolean); virtual;
+          procedure SetIsStarted(const aStatus : Boolean); virtual;
           procedure ResetToDefaultValues; virtual;
         public
           class constructor Create(AOwner: TComponent); override;
@@ -50,14 +45,14 @@ unit Pedometer;
           property Distance : Single read FDistance;
           property ElapsedTime : NativeUInt read FElapsedTime;
           property SimpleSteps : NativeUInt read FSimpleSteps;
-          property StrideLengthComputed : Single read FStrideLengthComputed default DefaultStrideLength;
+          property StrideLengthComputed : Single read FStrideLengthComputed;
           property WalkSteps : NativeUInt read FWalkSteps;
           property IsPaused : Boolean read FIsPaused default False;
           property IsStarted : Boolean read FIsStarted default False;
         published
-          property StopDetectionTimeout : Single read FStopDetectionTimeout write SetStopDetectionTimeout default DefaultDetectionTimeout;
-          property StrideLenghtUserDefined : Single read FStrideLenghtUserDefined write SetStrideLenghtUserDefined default DefaultStrideLength;
-          property Sensitivity : NativeUInt read FSensitivity write FSensitivity default DefaultSensitivity;
+          property StopDetectionTimeout : Single read FStopDetectionTimeout write SetStopDetectionTimeout;
+          property StrideLenghtUserDefined : Single read FStrideLenghtUserDefined write SetStrideLenghtUserDefined;
+          property Sensitivity : NativeUInt read FSensitivity write FSensitivity;
       end;
 
     procedure Register;
@@ -75,7 +70,7 @@ unit Pedometer;
       begin
         inherited;
         FSensor := nil;
-        if TSensorManager.CanActivate then
+        if TSensorManager.Current.CanActivate then
           begin
             TSensorManager.Current.Activate;
             if Length(TSensorManager.Current.GetSensorsByCategory(TSensorCategory.Motion)) > 0 then
@@ -147,10 +142,10 @@ unit Pedometer;
       begin
         if Assigned(FListPoints) then
           FListPoints.EmptyDataSet;
-        SetStopDetectionTimeout(DefaultDetectionTimeout);
-        SetStrideLengthComputed(DefaultStrideLength);
-        SetStrideLenghtUserDefined(DefaultStrideLength);
-        FSensitivity := DefaultSensitivity;
+        SetStopDetectionTimeout(10000.0);
+        SetStrideLengthComputed(0.73);
+        SetStrideLenghtUserDefined(0.73);
+        FSensitivity := 50000;
       end;
 
     procedure TPedometer.Save;
@@ -166,55 +161,55 @@ unit Pedometer;
         // something similar to https://docwiki.embarcadero.com/CodeExamples/Sydney/en/FMX.SensorInfo_Sample
       end;
 
-    procedure TPedometer.SetDistance(aLength: Single);
+    procedure TPedometer.SetDistance(const aLength: Single);
       begin
         if aLength < 0 then
           raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
         FDistance := aLength;
       end;
 
-    procedure TPedometer.SetElapsedTime(aDuration: NativeUInt);
+    procedure TPedometer.SetElapsedTime(const aDuration: NativeUInt);
       begin
         FElapsedTime := aDuration;
       end;
 
-    procedure TPedometer.SetIsPaused(aStatus: Boolean);
+    procedure TPedometer.SetIsPaused(const aStatus: Boolean);
       begin
         FIsPaused := aStatus;
       end;
 
-    procedure TPedometer.SetIsStarted(aStatus: Boolean);
+    procedure TPedometer.SetIsStarted(const aStatus: Boolean);
       begin
         FIsStarted := aStatus;
       end;
 
-    procedure TPedometer.SetSimpleSteps(aQuantity: NativeUInt);
+    procedure TPedometer.SetSimpleSteps(const aQuantity: NativeUInt);
       begin
         FSimpleSteps := aQuantity;
       end;
 
-    procedure TPedometer.SetStopDetectionTimeout(aDuration: Single);
+    procedure TPedometer.SetStopDetectionTimeout(const aDuration: Single);
       begin
         if aDuration < 0 then
           raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
         FStopDetectionTimeout := aDuration;
       end;
 
-    procedure TPedometer.SetStrideLenghtUserDefined(aLength: Single);
+    procedure TPedometer.SetStrideLenghtUserDefined(const aLength: Single);
       begin
         if aLength < 0 then
           raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
         FStrideLenghtUserDefined := aLength;
       end;
 
-    procedure TPedometer.SetStrideLengthComputed(aLength: Single);
+    procedure TPedometer.SetStrideLengthComputed(const aLength: Single);
       begin
         if aLength < 0 then
           raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
         FStrideLengthComputed := aLength;
       end;
 
-    procedure TPedometer.SetWalkSteps(aQuantity: NativeUInt);
+    procedure TPedometer.SetWalkSteps(const aQuantity: NativeUInt);
       begin
         FWalkSteps := aQuantity;
       end;
