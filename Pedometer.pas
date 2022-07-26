@@ -23,7 +23,6 @@ unit Pedometer;
           FIsPaused : Boolean;
           FIsStarted : Boolean;
           FSensor : TMotionSensor;
-          FIsSensorAvailable : Boolean;
           FTimer : TTimer;  // really useful?  ->  clarify its use in this component...
           FListPoints : TFDMemTable; // for recording measures
           FSensitivity : NativeUInt;
@@ -83,7 +82,6 @@ unit Pedometer;
               begin
                 FSensor := TMotionSensor.Create(Self);
                 try
-                  FIsSensorAvailable := True;
                   FTimer := TTimer.Create(Self);
                   try
                     FListPoints := TFDMemTable.Create(Self);
@@ -116,7 +114,7 @@ unit Pedometer;
 
     procedure TPedometer.Pause;
       begin
-        if FIsSensorAvailable then
+        if Assigned(FSensor) then
           begin
             if FIsStarted then
               begin
@@ -136,7 +134,7 @@ unit Pedometer;
 
     procedure TPedometer.Reset;
       begin
-        if FIsSensorAvailable then
+        if Assigned(FSensor) then
           begin
             if FIsStarted then
               begin
@@ -157,7 +155,7 @@ unit Pedometer;
 
     procedure TPedometer.Save;
       begin
-        if FIsSensorAvailable then
+        if Assigned(FSensor) then
           begin
             // If FListPoints not empty, store results somewhere...
           end;
@@ -229,12 +227,15 @@ unit Pedometer;
 
     procedure TPedometer.Stop;
       begin
-        if FIsStarted then
+        if Assigned(FSensor) then
           begin
-            // stop recording FSensor.OnDataChange events
-            Save;
-            SetIsStarted(False);
-            Reset;
+            if FIsStarted then
+              begin
+                // stop recording FSensor.OnDataChange events
+                Save;
+                SetIsStarted(False);
+                Reset;
+              end;
           end;
       end;
 
