@@ -18,8 +18,9 @@ unit Pedometer;
           FIsPaused : Boolean;
           FIsStarted : Boolean;
           FSensor : TMotionSensor;
-          FTimer : TTimer;
-          FListPoints : TFDMemTable; // for recording mesures
+          FIsSensorAvailable : Boolean;
+          FTimer : TTimer;  // really useful?  ->  clarify its use in this component...
+          FListPoints : TFDMemTable; // for recording measures
           FSensitivity : NativeUInt;
           // ??? missing field to record results when stopping pedometer ???
         protected
@@ -30,8 +31,8 @@ unit Pedometer;
           procedure SetSimpleSteps(aQuantity : NativeUInt); virtual;
           procedure SetStrideLengthComputed(aLength : Single); virtual;
           procedure SetWalkSteps(aQuantity : NativeUInt); virtual;
-          procedure SetFIsPaused(aStatus : Boolean); virtual;
-          procedure SetFIsStarted(aStatus : Boolean); virtual;
+          procedure SetIsPaused(aStatus : Boolean); virtual;
+          procedure SetIsStarted(aStatus : Boolean); virtual;
         public
           class constructor Create(AOwner: TComponent); override;
           destructor Destroy; override;
@@ -103,30 +104,45 @@ unit Pedometer;
 
     procedure TPedometer.Pause;
       begin
-        {
-        if FIsPaused = False
-           stop recording FSensor.OnDataChange events
-           pause FTimer
-           SetFIsPaused(True)
-         else
-           start recording FSensor.OnDataChange events
-           restart FTimer
-           SetFIsPaused(False)
-        }
+        if FIsSensorAvailable then
+          begin
+            if FIsStarted then
+              begin
+                {
+                if FIsPaused = False
+                   stop recording FSensor.OnDataChange events
+                   pause FTimer
+                   SetFIsPaused(True)
+                 else
+                   start recording FSensor.OnDataChange events
+                   restart FTimer
+                   SetFIsPaused(False)
+                }
+              end;
+          end;
       end;
 
     procedure TPedometer.Reset;
       begin
-        {
-        - clear FListPoints
-        - reset FTimer
-        - set default values for every field
-        }
+        if FIsSensorAvailable then
+          begin
+            if FIsStarted then
+              begin
+                {
+                - clear FListPoints
+                - reset FTimer
+                - set default values for every field
+                }
+              end;
+          end;
       end;
 
     procedure TPedometer.Save;
       begin
-        // should be delegated to owner application?
+        if FIsSensorAvailable then
+          begin
+            // If FListPoints not empty, store results somewhere...
+          end;
       end;
 
     function TPedometer.SensorInfo : TStringList;
@@ -136,61 +152,72 @@ unit Pedometer;
 
     procedure TPedometer.SetDistance(aLength: Single);
       begin
-
+        if aLength < 0 then
+          raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
+        FDistance := aLength;
       end;
 
     procedure TPedometer.SetElapsedTime(aDuration: NativeUInt);
       begin
-
+        FElapsedTime := aDuration;
       end;
 
-    procedure TPedometer.SetFIsPaused(aStatus: Boolean);
+    procedure TPedometer.SetIsPaused(aStatus: Boolean);
       begin
         FIsPaused := aStatus;
       end;
 
-    procedure TPedometer.SetFIsStarted(aStatus: Boolean);
+    procedure TPedometer.SetIsStarted(aStatus: Boolean);
       begin
         FIsStarted := aStatus;
       end;
 
     procedure TPedometer.SetSimpleSteps(aQuantity: NativeUInt);
       begin
-
+        FSimpleSteps := aQuantity;
       end;
 
     procedure TPedometer.SetStopDetectionTimeout(aDuration: Single);
       begin
-        // Raise exception if negative value
+        if aDuration < 0 then
+          raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
+        FStopDetectionTimeout := aDuration;
       end;
 
     procedure TPedometer.SetStrideLenghtUserDefined(aLength: Single);
       begin
-        // Raise exception if negative value
+        if aLength < 0 then
+          raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
+        FStrideLenghtUserDefined := aLength;
       end;
 
     procedure TPedometer.SetStrideLengthComputed(aLength: Single);
       begin
-        // Raise exception if negative value
+        if aLength < 0 then
+          raise EArgumentOutOfRangeException.Create('Value MUST be POSITIVE');
+        FStrideLengthComputed := aLength;
       end;
 
     procedure TPedometer.SetWalkSteps(aQuantity: NativeUInt);
       begin
-
+        FWalkSteps := aQuantity;
       end;
 
     procedure TPedometer.Start;
       begin
         // If motion sensor is available, start it, else raise exception?
-        SetFIsStarted(True);
+        SetIsStarted(True);
       end;
 
     procedure TPedometer.Stop;
       begin
-        // stop recording FSensor.OnDataChange events
-        // save results somewhere...
-        SetFIsStarted(False);
-        Reset;
+        if FIsStarted then
+          begin
+            // stop recording FSensor.OnDataChange events
+            Save;
+            SetIsStarted(False);
+            Reset;
+          end;
       end;
 
 end.
