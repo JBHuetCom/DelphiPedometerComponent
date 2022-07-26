@@ -5,6 +5,11 @@ unit Pedometer;
     uses
       System.SysUtils, System.Classes, System.Sensors.Components, FMX.Types, FireDAC.Comp.Client;
 
+    const
+      DefaultStrideLength : Single = 0.73;
+      DefaultDetectionTimeout : Single = 10000.0;
+      DefaultSensitivity : NativeUInt = 50000;
+
     type
       TPedometer = class(TComponent)
         private
@@ -33,6 +38,7 @@ unit Pedometer;
           procedure SetWalkSteps(aQuantity : NativeUInt); virtual;
           procedure SetIsPaused(aStatus : Boolean); virtual;
           procedure SetIsStarted(aStatus : Boolean); virtual;
+          procedure ResetToDefaultValues; virtual;
         public
           class constructor Create(AOwner: TComponent); override;
           destructor Destroy; override;
@@ -45,14 +51,14 @@ unit Pedometer;
           property Distance : Single read FDistance;
           property ElapsedTime : NativeUInt read FElapsedTime;
           property SimpleSteps : NativeUInt read FSimpleSteps;
-          property StrideLengthComputed : Single read FStrideLengthComputed default 0.73;
+          property StrideLengthComputed : Single read FStrideLengthComputed default DefaultStrideLength;
           property WalkSteps : NativeUInt read FWalkSteps;
           property IsPaused : Boolean read FIsPaused default False;
           property IsStarted : Boolean read FIsStarted default False;
         published
-          property StopDetectionTimeout : Single read FStopDetectionTimeout write SetStopDetectionTimeout default 10000.0;
-          property StrideLenghtUserDefined : Single read FStrideLenghtUserDefined write SetStrideLenghtUserDefined default 0.73;
-          property Sensitivity : NativeUInt read FSensitivity write FSensitivity default 50000;
+          property StopDetectionTimeout : Single read FStopDetectionTimeout write SetStopDetectionTimeout default DefaultDetectionTimeout;
+          property StrideLenghtUserDefined : Single read FStrideLenghtUserDefined write SetStrideLenghtUserDefined default DefaultStrideLength;
+          property Sensitivity : NativeUInt read FSensitivity write FSensitivity default DefaultSensitivity;
       end;
 
     procedure Register;
@@ -69,26 +75,32 @@ unit Pedometer;
     class constructor TPedometer.Create(AOwner: TComponent);
       begin
         inherited;
-        FSensor := TMotionSensor.Create;
-        try
-          FTimer := TTimer.Create;
-          try
-            FListPoints := TFDMemTable.Create;
-            try
-              { If motion sensor is available and active:
-                - initialize MemTable with fields: 1 field for each property of sensor available (depends on hardware and plateform)
-                - initialize FSensor.UpdateInterval to FSensitivity
-                - initialize computed and user defined stride lengths
-                - initialize detection timeout
-                }
-            except
-              FListPoints.Free;
+        FSensor := nil;
+        if TSensorManager.CanActivate then
+          begin
+            TSensorManager.Current.Activate;
+            if Length(TSensorManager.Current.GetSensorsByCategory(TSensorCategory.Motion)) > 0 then
+              begin
+                FSensor := TMotionSensor.Create(Self);
+                try
+                  FIsSensorAvailable := True;
+                  FTimer := TTimer.Create(Self);
+                  try
+                    FListPoints := TFDMemTable.Create(Self);
+                    try
+                       // initialize MemTable with fields: 1 field for each property of sensor available (depends on hardware and plateform)
+                       ResetToDefaultValues;
+                    except
+                      FListPoints.Free;
+                    end;
+                  except on E: Exception do
+                    FTimer.Free;
+                  end;
+                except
+                  FSensor.Free;
+                end;
             end;
-          except on E: Exception do
-            FTimer.Free;
-          end;
-        except on E: Exception do
-          FSensor.Free;
+          TSensorManager.Current.Deactivate;
         end;
       end;
 
@@ -128,13 +140,19 @@ unit Pedometer;
           begin
             if FIsStarted then
               begin
-                {
-                - clear FListPoints
-                - reset FTimer
-                - set default values for every field
-                }
+                ResetToDefaultValues;
               end;
           end;
+      end;
+
+    procedure TPedometer.ResetToDefaultValues;
+      begin
+        if Assigned(FListPoints) then
+          FListPoints.EmptyDataSet;
+        SetStopDetectionTimeout(DefaultDetectionTimeout);
+        SetStrideLengthComputed(DefaultStrideLength);
+        SetStrideLenghtUserDefined(DefaultStrideLength);
+        FSensitivity := DefaultSensitivity;
       end;
 
     procedure TPedometer.Save;
